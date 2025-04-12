@@ -1,7 +1,15 @@
 #pragma once
 
 #include "byte_stream.hh"
+#include <cstdint>
+#include <map>
+#include <string>
 
+struct ReassemblePacket
+{
+  std::string data;
+  bool is_last_substring;
+};
 class Reassembler
 {
 public:
@@ -29,7 +37,6 @@ public:
    * The Reassembler should close the stream after writing the last byte.
    */
   void insert( uint64_t first_index, std::string data, bool is_last_substring );
-
   // How many bytes are stored in the Reassembler itself?
   // This function is for testing only; don't add extra state to support it.
   uint64_t count_bytes_pending() const;
@@ -43,4 +50,23 @@ public:
 
 private:
   ByteStream output_;
+  uint64_t reassembled_first_index_ { 0 };    // The index of the first byte that has not yet been reassembled
+  std::map<int, ReassemblePacket> buffer_ {}; // Buffer for reassembling packets
+
+  void handle_match_first_index( const std::string& data, bool is_last_substring );
+  void buffer_in_assembler( const uint64_t first_index,
+                            const std::string& data,
+                            bool is_last_substring ); // remain one byte for triggring push bytes into stream
+  void pushed_new_bytes( const std::string& data, bool is_last_substring );
+  bool is_capacity_exhausted() const { return output_.writer().available_capacity() == 0; }
+
+  bool trim_to_fit( uint64_t& first_index, std::string& data, bool& is_lasting_substring ) const;
+  bool is_inserted_out_of_range( const uint64_t index, const std::string& data ) const;
+  bool is_match_first_index( const uint64_t first_index ) const { return reassembled_first_index_ == first_index; }
+  bool is_already_buffered( const uint64_t first_index, const std::string& data ) const;
+  void merge_overlap_from( const uint64_t first_index );
+  void buffer_insertion( const uint64_t first_index, const std::string& data, bool is_last_substring );
+  void push_buffered_data( const uint64_t index );
+  int find_the_contain_packet( uint64_t first_index ) const;
+  uint64_t calculate_max_index( uint64_t index, const std::string& data ) const;
 };
