@@ -10,14 +10,14 @@ ByteStream::ByteStream( uint64_t capacity ) : capacity_( capacity ) {}
 
 void Writer::push( string data )
 {
-  string add_stream = data.substr( 0, available_capacity());
+  string add_stream = data.substr( 0, available_capacity() );
   stream_.append( add_stream );
   write_byte_num_ += add_stream.size();
 }
 
 void Writer::close()
 {
-  if (is_closed()) {
+  if ( is_closed() ) {
     return;
   }
   closed_ = true;
@@ -47,7 +47,7 @@ string_view Reader::peek() const
 
 void Reader::pop( uint64_t len )
 {
-  stream_ = stream_.substr( len);
+  stream_ = stream_.substr( len );
   read_byte_num_ += len;
 }
 
