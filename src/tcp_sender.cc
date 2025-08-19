@@ -138,8 +138,12 @@ void TCPSender::push_established_zero_window_handler( const TransmitFunction& tr
 
 TCPSenderMessage TCPSender::make_empty_message() const
 {
-  debug( "unimplemented make_empty_message() called" );
-  return {};
+  TCPSenderMessage msg = TCPSenderMessage();
+  msg.SYN = false;
+  msg.FIN = false;
+  msg.RST = reader().has_error();
+  msg.seqno = window_.next_seq_;
+  return msg;
 }
 
 void TCPSender::receive( const TCPReceiverMessage& msg )
