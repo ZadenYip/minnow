@@ -56,8 +56,24 @@ TCPSenderMessage TCPSender::segment_get_just_contain_payload() const
 
 void TCPSender::push( const TransmitFunction& transmit )
 {
-  debug( "unimplemented push() called" );
-  (void)transmit;
+  switch ( kSenderState_ ) {
+    case SenderState::CLOSED:
+      push_closed_handler( transmit );
+      break;
+    case SenderState::SYN_SENT:
+      break;
+    case SenderState::ESTABLISHED:
+      push_established_handler( transmit );
+      break;
+    case SenderState::ESTABLISHED_ZERO_WINDOW:
+      push_established_zero_window_handler( transmit );
+      break;
+    case SenderState::FIN_SENT:
+      break;
+    default:
+      throw std::runtime_error( "Invalid sender state" );
+  }
+}
 }
 
 TCPSenderMessage TCPSender::make_empty_message() const
