@@ -15,7 +15,14 @@ class TCPSender
 public:
   /* Construct TCP sender with given default Retransmission Timeout and possible ISN */
   TCPSender( ByteStream&& input, Wrap32 isn, uint64_t initial_RTO_ms )
-    : input_( std::move( input ) ), isn_( isn ), initial_RTO_ms_( initial_RTO_ms )
+    : input_( std::move( input ) )
+    , isn_( isn )
+    , initial_RTO_ms_( initial_RTO_ms )
+    , retransmit_msgs_( std::list<TCPSenderMessage>() )
+    , window_( isn )
+    , is_syn_sent_( false )
+    , timer_( initial_RTO_ms )
+    , kSenderState_( SenderState::CLOSED )
   {}
 
   /* Generate an empty TCPSenderMessage */
@@ -84,4 +91,41 @@ private:
   ByteStream input_;
   Wrap32 isn_;
   uint64_t initial_RTO_ms_;
+  std::list<TCPSenderMessage> retransmit_msgs_;
+  TCPSenderWindow window_;
+  bool is_syn_sent_;
+  Timer timer_;
+  enum class SenderState
+  {
+    CLOSED,
+    ESTABLISHED,
+    ESTABLISHED_ZERO_WINDOW,
+    SYN_SENT,
+    FIN_SENT,
+  } kSenderState_;
+  /**
+   * @brief 还没有处理成segment待处理的字节数量
+   * the bytes that have not yet been processed into segments
+   * @return uint16_t
+   */
+  uint16_t pending_processed2segment_bytes() const;
+  std::string_view get_next_payload() const;
+  TCPSenderMessage get_retransmit_msg() const;
+  TCPSenderMessage get_timeout_msg() const;
+  bool segment_has_next_payload();
+  bool segment_after_this_window_has_space( const TCPSenderMessage& current_msg ) const
+  {
+    return window_.available_send_space() > current_msg.payload.size();
+  }
+  void segment_transmit( const TCPSenderMessage& msg, const TransmitFunction& transmit );
+  TCPSenderMessage segment_get_just_contain_payload() const;
+  void segment_update_state_for_ack( const TCPReceiverMessage& msg );
+  void segment_control_remove_for_ack( const TCPReceiverMessage& msg );
+  void segment_control_create( const TCPSenderMessage& msg );
+  void push_closed_handler( const TransmitFunction& transmit );
+  void push_established_handler( const TransmitFunction& transmit );
+  void push_established_zero_window_handler( const TransmitFunction& transmit );
+  void receive_syn_sent_handler( const TCPReceiverMessage& msg );
+  void receive_established_handler( const TCPReceiverMessage& msg );
+  void receive_established_zero_window_handler( const TCPReceiverMessage& msg );
 };
