@@ -223,6 +223,18 @@ void TCPSender::receive_established_zero_window_handler( const TCPReceiverMessag
 
 void TCPSender::tick( uint64_t ms_since_last_tick, const TransmitFunction& transmit )
 {
-  debug( "unimplemented tick({}, ...) called", ms_since_last_tick );
-  (void)transmit;
+  if ( retransmit_msgs_.empty() ) {
+    timer_.stop();
+  } else {
+    timer_.tick( ms_since_last_tick );
+    if ( timer_.timeout() ) {
+      TCPSenderMessage msg = get_timeout_msg();
+      transmit( msg );
+      if ( kSenderState_ == SenderState::ESTABLISHED_ZERO_WINDOW ) {
+        timer_.reset();
+      }
+      timer_.restart();
+    }
+  }
+}
 }
