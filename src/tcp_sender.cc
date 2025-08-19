@@ -46,6 +46,14 @@ void TCPSender::segment_transmit( const TCPSenderMessage& msg, const TransmitFun
   segment_control_create( msg );
 }
 
+TCPSenderMessage TCPSender::segment_get_just_contain_payload() const
+{
+  TCPSenderMessage msg = TCPSenderMessage();
+  msg.seqno = window_.next_seq_;
+  msg.payload = this->get_next_payload();
+  return msg;
+}
+
 void TCPSender::push( const TransmitFunction& transmit )
 {
   debug( "unimplemented push() called" );
