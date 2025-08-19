@@ -74,6 +74,66 @@ void TCPSender::push( const TransmitFunction& transmit )
       throw std::runtime_error( "Invalid sender state" );
   }
 }
+
+void TCPSender::push_closed_handler( const TransmitFunction& transmit )
+{
+  window_.rcv_window_ -= 1;
+  TCPSenderMessage msg = segment_get_just_contain_payload();
+  msg.SYN = true;
+  if ( segment_after_this_window_has_space( msg ) ) {
+    msg.FIN = writer().is_closed();
+  }
+  segment_transmit( msg, transmit );
+  timer_.restart();
+  kSenderState_ = SenderState::SYN_SENT;
+}
+
+void TCPSender::push_established_handler( const TransmitFunction& transmit )
+{
+  if ( window_.available_send_space() == 0 ) {
+    return;
+  }
+
+  if ( reader().has_error() ) {
+    TCPSenderMessage msg = make_empty_message();
+    transmit( msg );
+    kSenderState_ = SenderState::CLOSED;
+    return;
+  }
+
+  while ( true ) {
+    TCPSenderMessage msg = segment_get_just_contain_payload();
+    if ( segment_has_next_payload() ) {
+      segment_transmit( msg, transmit );
+      timer_.start_if_stopped();
+    } else {
+      // If sender prepare to close, check if the segment can fit in the window
+      if ( writer().is_closed() && segment_after_this_window_has_space( msg ) ) {
+        msg.FIN = true;
+        kSenderState_ = SenderState::FIN_SENT;
+      }
+      // Don't send empty segments
+      if ( msg.sequence_length() != 0 ) {
+        segment_transmit( msg, transmit );
+        timer_.start_if_stopped();
+      }
+      break;
+    }
+  }
+}
+
+void TCPSender::push_established_zero_window_handler( const TransmitFunction& transmit )
+{
+  if ( window_.transmitting_bytes_count() >= 1 ) {
+    return;
+  }
+
+  window_.rcv_window_ += 1;
+  TCPSenderMessage msg = segment_get_just_contain_payload();
+  msg.FIN = msg.payload.empty() ? writer().is_closed() : false;
+  segment_transmit( msg, transmit );
+  timer_.start_if_stopped();
+  window_.rcv_window_ -= 1;
 }
 
 TCPSenderMessage TCPSender::make_empty_message() const
