@@ -1,6 +1,16 @@
 #include "tcp_sender.hh"
 #include "debug.hh"
 #include "tcp_config.hh"
+#include "tcp_receiver_message.hh"
+#include "tcp_sender_message.hh"
+#include "wrapping_integers.hh"
+#include <algorithm>
+#include <cstddef>
+#include <cstdint>
+#include <stdexcept>
+#include <string>
+#include <string_view>
+#include <sys/types.h>
 
 using namespace std;
 

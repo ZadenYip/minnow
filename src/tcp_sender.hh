@@ -3,8 +3,12 @@
 #include "byte_stream.hh"
 #include "tcp_receiver_message.hh"
 #include "tcp_sender_message.hh"
+#include "wrapping_integers.hh"
 
+#include <cstdint>
 #include <functional>
+#include <list>
+#include <string_view>
 
 class TCPSender
 {
