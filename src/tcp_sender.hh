@@ -40,6 +40,44 @@ public:
   const Reader& reader() const { return input_.reader(); }
   Writer& writer() { return input_.writer(); }
 
+  class Timer
+  {
+    friend class TCPSender;
+
+  private:
+    uint64_t initial_RTO_ms_;
+    uint64_t passed_time_;
+    uint64_t RTO_ms_;
+    bool is_running_;
+
+  public:
+    Timer( uint64_t initial_RTO_ms )
+      : initial_RTO_ms_( initial_RTO_ms ), passed_time_( 0 ), RTO_ms_( initial_RTO_ms ), is_running_( false ) {};
+    void tick( uint64_t ms_since_last_tick );
+    bool timeout();
+    void reset();
+    void restart();
+    void start_if_stopped();
+    void stop();
+  };
+  class TCPSenderWindow
+  {
+    friend class TCPSender;
+
+  private:
+    Wrap32 base_;
+    Wrap32 next_seq_;
+    uint16_t rcv_window_;
+
+  public:
+    TCPSenderWindow( Wrap32 isn ) : base_( isn ), next_seq_( isn ), rcv_window_( 1 ) {};
+    uint16_t transmitting_bytes_count() const
+    {
+      return static_cast<uint16_t>( next_seq_.raw_value() - base_.raw_value() );
+    }
+    uint16_t available_send_space() const { return rcv_window_ - transmitting_bytes_count(); }
+  };
+
 private:
   Reader& reader() { return input_.reader(); }
 
