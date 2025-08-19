@@ -44,11 +44,14 @@ void TCPReceiver::established_handler( const TCPSenderMessage& msg )
     kReceiverState_ = ReceiverState::CLOSED;
   }
 }
+
+void TCPReceiver::byte_push( const TCPSenderMessage& msg )
+{
+  uint64_t stream_seq = msg.seqno.unwrap( isn_, rcv_absolute_ack_seq_ ) - ( !msg.SYN );
   uint64_t old_pushed_bytes = reassembler_.writer().bytes_pushed();
-  reassembler_.insert( stream_seq, message.payload, message.FIN );
+  reassembler_.insert( stream_seq, msg.payload, msg.FIN );
   uint64_t new_pushed_bytes = reassembler_.writer().bytes_pushed();
   rcv_absolute_ack_seq_ += ( new_pushed_bytes - old_pushed_bytes );
-  rcv_absolute_ack_seq_ += ( message.SYN + reassembler_.writer().is_closed() );
 }
 
 TCPReceiverMessage TCPReceiver::send() const
