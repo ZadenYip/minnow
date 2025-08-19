@@ -87,7 +87,6 @@ public:
 
 private:
   Reader& reader() { return input_.reader(); }
-
   ByteStream input_;
   Wrap32 isn_;
   uint64_t initial_RTO_ms_;
