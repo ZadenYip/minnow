@@ -17,15 +17,19 @@ using namespace std;
 // This function is for testing only; don't add extra state to support it.
 uint64_t TCPSender::sequence_numbers_in_flight() const
 {
-  debug( "unimplemented sequence_numbers_in_flight() called" );
-  return {};
+  return window_.transmitting_bytes_count();
 }
 
 // This function is for testing only; don't add extra state to support it.
 uint64_t TCPSender::consecutive_retransmissions() const
 {
-  debug( "unimplemented consecutive_retransmissions() called" );
-  return {};
+  uint8_t count = 0;
+  uint64_t RTO_ms = timer_.RTO_ms_;
+  while ( initial_RTO_ms_ != RTO_ms ) {
+    RTO_ms /= 2;
+    count++;
+  }
+  return count;
 }
 
 void TCPSender::push( const TransmitFunction& transmit )
