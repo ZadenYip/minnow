@@ -295,4 +295,41 @@ TCPSenderMessage TCPSender::get_timeout_msg() const
   return get_retransmit_msg();
 }
 
+void TCPSender::Timer::tick( uint64_t ms_since_last_tick )
+{
+  if ( is_running_ ) {
+    passed_time_ += ms_since_last_tick;
+  }
+}
+
+bool TCPSender::Timer::timeout()
+{
+  bool is_time_out = passed_time_ >= RTO_ms_;
+  if ( is_time_out ) {
+    RTO_ms_ *= 2;
+  }
+  return is_time_out;
+}
+
+void TCPSender::Timer::reset()
+{
+  RTO_ms_ = initial_RTO_ms_;
+}
+
+void TCPSender::Timer::start_if_stopped()
+{
+  if ( !is_running_ ) {
+    restart();
+  }
+}
+
+void TCPSender::Timer::restart()
+{
+  passed_time_ = 0;
+  is_running_ = true;
+}
+
+void TCPSender::Timer::stop()
+{
+  is_running_ = false;
 }
