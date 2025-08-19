@@ -148,8 +148,45 @@ TCPSenderMessage TCPSender::make_empty_message() const
 
 void TCPSender::receive( const TCPReceiverMessage& msg )
 {
-  debug( "unimplemented receive() called" );
-  (void)msg;
+  window_.rcv_window_ = msg.window_size;
+
+  if ( msg.ackno.has_value() ) {
+    /**
+     * @brief ignore old ack
+     *
+     */
+    if ( msg.ackno.value().raw_value() <= window_.base_.raw_value() ) {
+      return;
+    }
+
+    uint32_t max_ackno = window_.next_seq_.raw_value();
+    if ( msg.ackno.value().raw_value() > max_ackno ) {
+      return;
+    }
+  }
+
+  if ( msg.RST ) {
+    writer().set_error();
+    return;
+  }
+
+  switch ( kSenderState_ ) {
+    case SenderState::CLOSED:
+      return;
+    case SenderState::SYN_SENT:
+      receive_syn_sent_handler( msg );
+      break;
+    case SenderState::ESTABLISHED_ZERO_WINDOW:
+      receive_established_zero_window_handler( msg );
+      break;
+    case SenderState::ESTABLISHED:
+    case SenderState::FIN_SENT:
+      receive_established_handler( msg );
+      break;
+    default:
+      throw std::runtime_error( "Invalid sender state" );
+  }
+}
 }
 
 void TCPSender::tick( uint64_t ms_since_last_tick, const TransmitFunction& transmit )
