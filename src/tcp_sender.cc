@@ -39,6 +39,12 @@ bool TCPSender::segment_has_next_payload()
          && window_.available_send_space() != msg.payload.size();
 }
 
+void TCPSender::segment_transmit( const TCPSenderMessage& msg, const TransmitFunction& transmit )
+{
+  transmit( msg );
+  window_.next_seq_ = window_.next_seq_ + static_cast<uint32_t>( msg.sequence_length() );
+  segment_control_create( msg );
+}
 
 void TCPSender::push( const TransmitFunction& transmit )
 {
