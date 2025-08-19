@@ -32,6 +32,14 @@ uint64_t TCPSender::consecutive_retransmissions() const
   return count;
 }
 
+bool TCPSender::segment_has_next_payload()
+{
+  TCPSenderMessage msg = segment_get_just_contain_payload();
+  return pending_processed2segment_bytes() != msg.payload.size()
+         && window_.available_send_space() != msg.payload.size();
+}
+
+
 void TCPSender::push( const TransmitFunction& transmit )
 {
   debug( "unimplemented push() called" );
