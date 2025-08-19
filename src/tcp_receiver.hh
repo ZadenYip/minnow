@@ -11,7 +11,7 @@ class TCPReceiver
 public:
   // Construct with given Reassembler
   explicit TCPReceiver( Reassembler&& reassembler )
-    : reassembler_( std::move( reassembler ) ), isn_( 0 ), rcv_absolute_ack_seq_( 0 )
+    : reassembler_( std::move( reassembler ) ), isn_( 0 ), rcv_absolute_ack_seq_( 0 ), kReceiverState_( ReceiverState::CLOSED )
   {}
 
   /*
@@ -28,6 +28,9 @@ public:
   Reader& reader() { return reassembler_.reader(); }
   const Reader& reader() const { return reassembler_.reader(); }
   const Writer& writer() const { return reassembler_.writer(); }
+  void closed_handler( const TCPSenderMessage& msg );
+  void established_handler( const TCPSenderMessage& msg );
+  void byte_push( const TCPSenderMessage& msg );
 
 private:
   Reassembler reassembler_;
@@ -41,4 +44,9 @@ private:
    * 下一个应该ack的绝对序列号
    */
   uint64_t rcv_absolute_ack_seq_;
+  enum class ReceiverState
+  {
+    CLOSED,
+    ESTABLISHED,
+  } kReceiverState_;
 };
