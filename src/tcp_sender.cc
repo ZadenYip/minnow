@@ -280,4 +280,19 @@ std::string_view TCPSender::get_next_payload() const
   std::string_view fill_window_payload = payload.substr( 0, min );
   return fill_window_payload;
 }
+
+TCPSenderMessage TCPSender::get_retransmit_msg() const
+{
+  auto it = retransmit_msgs_.begin();
+  if ( it == retransmit_msgs_.end() ) {
+    throw std::runtime_error( "No retransmit message found for the given sequence number" );
+  }
+  return *it;
+}
+
+TCPSenderMessage TCPSender::get_timeout_msg() const
+{
+  return get_retransmit_msg();
+}
+
 }
