@@ -237,4 +237,11 @@ void TCPSender::tick( uint64_t ms_since_last_tick, const TransmitFunction& trans
     }
   }
 }
+
+uint16_t TCPSender::pending_processed2segment_bytes() const
+{
+  uint64_t pending_count = reader().bytes_buffered() - window_.transmitting_bytes_count();
+  uint16_t result = std::min( pending_count, static_cast<uint64_t>( UINT16_MAX ) );
+  return result;
+}
 }
