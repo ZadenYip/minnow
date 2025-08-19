@@ -244,4 +244,29 @@ uint16_t TCPSender::pending_processed2segment_bytes() const
   uint16_t result = std::min( pending_count, static_cast<uint64_t>( UINT16_MAX ) );
   return result;
 }
+
+void TCPSender::segment_control_create( const TCPSenderMessage& msg )
+{
+  retransmit_msgs_.push_back( msg );
+}
+
+void TCPSender::segment_update_state_for_ack( const TCPReceiverMessage& msg )
+{
+  window_.base_ = msg.ackno.value();
+  segment_control_remove_for_ack( msg );
+}
+
+void TCPSender::segment_control_remove_for_ack( const TCPReceiverMessage& msg )
+{
+  auto it = retransmit_msgs_.begin();
+  while ( it != retransmit_msgs_.end() ) {
+    uint32_t tail_seq = it->seqno.raw_value() + it->sequence_length() - 1;
+    if ( tail_seq < msg.ackno.value().raw_value() ) {
+      reader().pop( it->payload.size() );
+      it = retransmit_msgs_.erase( it );
+    } else {
+      break;
+    }
+  }
+}
 }
