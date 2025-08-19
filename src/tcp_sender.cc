@@ -269,4 +269,15 @@ void TCPSender::segment_control_remove_for_ack( const TCPReceiverMessage& msg )
     }
   }
 }
+
+std::string_view TCPSender::get_next_payload() const
+{
+  uint32_t bytes_start = this->window_.next_seq_.raw_value() - this->window_.base_.raw_value();
+  std::string_view payload = reader().peek().substr( bytes_start, bytes_start + pending_processed2segment_bytes() );
+  uint16_t min_in_payload_or_space
+    = std::min( static_cast<uint16_t>( payload.size() ), window_.available_send_space() );
+  uint16_t min = std::min( min_in_payload_or_space, static_cast<uint16_t>( TCPConfig::MAX_PAYLOAD_SIZE ) );
+  std::string_view fill_window_payload = payload.substr( 0, min );
+  return fill_window_payload;
+}
 }
