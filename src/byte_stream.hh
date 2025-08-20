@@ -26,7 +26,8 @@ protected:
   uint64_t capacity_;
   uint64_t write_byte_num_ {};
   uint64_t read_byte_num_ {};
-  std::string stream_ {};
+  uint64_t stream_start_ {};
+  std::string buffer_ {};
   bool closed_ {};
   bool error_ {};
 };
