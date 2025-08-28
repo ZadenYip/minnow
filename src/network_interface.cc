@@ -1,11 +1,15 @@
+#include <cstdint>
 #include <iostream>
 
 #include "arp_message.hh"
 #include "debug.hh"
 #include "ethernet_frame.hh"
+#include "ethernet_header.hh"
 #include "exception.hh"
 #include "helpers.hh"
+#include "ipv4_datagram.hh"
 #include "network_interface.hh"
+#include "parser.hh"
 
 using namespace std;
 
@@ -19,6 +23,9 @@ NetworkInterface::NetworkInterface( string_view name,
   , port_( notnull( "OutputPort", move( port ) ) )
   , ethernet_address_( ethernet_address )
   , ip_address_( ip_address )
+  , current_time_stamp_( 0 )
+  , dgram_pending_arp_()
+  , arp_table_()
 {
   cerr << "DEBUG: Network interface has Ethernet address " << to_string( ethernet_address_ ) << " and IP address "
        << ip_address.ip() << "\n";

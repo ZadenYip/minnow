@@ -1,9 +1,14 @@
 #pragma once
 
 #include "address.hh"
+#include "arp_message.hh"
 #include "ethernet_frame.hh"
 #include "ipv4_datagram.hh"
+#include "parser.hh"
 
+#include <cstdint>
+#include <list>
+#include <map>
 #include <memory>
 #include <queue>
 
@@ -82,4 +87,22 @@ private:
 
   // Datagrams that have been received
   std::queue<InternetDatagram> datagrams_received_ {};
+
+  // Start with class initialization
+  size_t current_time_stamp_;
+  struct ARPEntry
+  {
+    // Timestamp when the entry was last updated
+    size_t last_timestamp_;
+    EthernetAddress ethernet_address_;
+    uint32_t ip_address_;
+  };
+  struct DatagramEntry
+  {
+    size_t timestamp_;
+    std::list<InternetDatagram> list;
+    Address next_hop_;
+  };
+  std::map<uint32_t, DatagramEntry> dgram_pending_arp_;
+  std::map<uint32_t, ARPEntry> arp_table_;
 };
