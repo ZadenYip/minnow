@@ -20,11 +20,7 @@ void Reassembler::insert( uint64_t first_index, string data, bool is_last_substr
     return;
   }
 
-  if ( data.empty() ) {
-    if ( is_last_substring ) {
-      output_.writer().close();
-      return;
-    }
+  if ( data.empty() && !is_last_substring ) {
     return;
   }
 
