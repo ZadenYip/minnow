@@ -85,6 +85,15 @@ void NetworkInterface::send_frame( Serializer& payload_srlz,
   frame.payload = payload_srlz.finish();
   transmit( frame );
 }
+
+void NetworkInterface::send_dgram( const InternetDatagram& dgram, const Address& next_hop ) const
+{
+  const EthernetAddress& dst = arp_table_.at( next_hop.ipv4_numeric() ).ethernet_address_;
+  Serializer dgram_srlz = Serializer();
+  dgram.serialize( dgram_srlz );
+  send_frame( dgram_srlz, EthernetHeader::TYPE_IPv4, dst );
+}
+
 void NetworkInterface::send_arp_request( const uint32_t& dst_ip ) const
 {
   ARPMessage arp_msg = ARPMessage();
