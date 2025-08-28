@@ -67,8 +67,62 @@ void NetworkInterface::send_datagram( const InternetDatagram& dgram, const Addre
 //! \param[in] frame the incoming Ethernet frame
 void NetworkInterface::recv_frame( EthernetFrame frame )
 {
-  debug( "unimplemented recv_frame called" );
-  (void)frame;
+
+  uint16_t payload_type = frame.header.type;
+  switch ( payload_type ) {
+    case EthernetHeader::TYPE_IPv4:
+      recv_frame_ipv4( frame );
+      break;
+    case EthernetHeader::TYPE_ARP:
+      recv_frame_arp( frame );
+      break;
+  }
+}
+
+void NetworkInterface::recv_frame_ipv4( const EthernetFrame& frame )
+{
+  const EthernetAddress& dst = frame.header.dst;
+  if ( dst != ethernet_address_ && dst != ETHERNET_BROADCAST ) {
+    return;
+  }
+  Parser parser = Parser( frame.payload );
+  InternetDatagram dgram = InternetDatagram();
+  dgram.parse( parser );
+  if ( parser.has_error() ) {
+    return;
+  }
+  datagrams_received_.push( dgram );
+}
+
+void NetworkInterface::recv_frame_arp( const EthernetFrame& frame )
+{
+  Parser parser = Parser( frame.payload );
+  ARPMessage arp_msg = ARPMessage();
+  arp_msg.parse( parser );
+  if ( parser.has_error() ) {
+    return;
+  }
+
+  // If the ARP request is for us, we need to send an ARP reply
+  // 如果 ARP request 是找我们的，则回复ARP reply
+  if ( arp_msg.opcode == ARPMessage::OPCODE_REQUEST && arp_msg.target_ip_address == ip_address_.ipv4_numeric() ) {
+    send_arp_reply( arp_msg.sender_ethernet_address, arp_msg.sender_ip_address );
+  }
+
+  // 更新 ARP 表
+  ARPEntry entry { current_time_stamp_, arp_msg.sender_ethernet_address, arp_msg.sender_ip_address };
+  arp_table_.insert_or_assign( arp_msg.sender_ip_address, entry );
+
+  // If the ARP reply is for us, send the queued datagram
+  // 如果 ARP reply 是发给我们的， 则发送队列中的 datagram
+  if ( arp_msg.opcode == ARPMessage::OPCODE_REPLY && arp_msg.target_ethernet_address == ethernet_address_
+       && dgram_pending_arp_.contains( arp_msg.sender_ip_address ) ) {
+    DatagramEntry dgram_entry = dgram_pending_arp_.at( arp_msg.sender_ip_address );
+    for ( const InternetDatagram& dgram : dgram_entry.list ) {
+      send_dgram( dgram, dgram_entry.next_hop_ );
+    }
+    dgram_pending_arp_.erase( arp_msg.sender_ip_address );
+  }
 }
 
 //! \param[in] ms_since_last_tick the number of milliseconds since the last call to this method
@@ -117,4 +171,18 @@ void NetworkInterface::send_arp_request( const uint32_t& dst_ip ) const
   arp_msg.serialize( arp_msg_srlz );
 
   send_frame( arp_msg_srlz, EthernetHeader::TYPE_ARP, ETHERNET_BROADCAST );
+}
+
+void NetworkInterface::send_arp_reply( const EthernetAddress& dst_ether_address, uint32_t dst_ip_address ) const
+{
+  ARPMessage arp_msg = ARPMessage();
+  arp_msg.sender_ethernet_address = ethernet_address_;
+  arp_msg.sender_ip_address = ip_address_.ipv4_numeric();
+  arp_msg.target_ethernet_address = dst_ether_address;
+  arp_msg.target_ip_address = dst_ip_address;
+  arp_msg.opcode = ARPMessage::OPCODE_REPLY;
+  Serializer arp_msg_srlz = Serializer();
+  arp_msg.serialize( arp_msg_srlz );
+
+  send_frame( arp_msg_srlz, EthernetHeader::TYPE_ARP, arp_msg.target_ethernet_address );
 }

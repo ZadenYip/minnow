@@ -105,7 +105,10 @@ private:
   };
   std::map<uint32_t, DatagramEntry> dgram_pending_arp_;
   std::map<uint32_t, ARPEntry> arp_table_;
+  void recv_frame_ipv4( const EthernetFrame& frame );
+  void recv_frame_arp( const EthernetFrame& frame );
   void send_frame( Serializer& payload_srlz, const uint16_t ether_type, const EthernetAddress& next_hop ) const;
   void send_arp_request( const uint32_t& next_hop ) const;
+  void send_arp_reply( const EthernetAddress& dst_ether_address, uint32_t dst_ip_address ) const;
   void send_dgram( const InternetDatagram& dgram, const Address& next_hop ) const;
 };
