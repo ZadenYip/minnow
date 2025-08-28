@@ -74,6 +74,16 @@ void NetworkInterface::recv_frame( EthernetFrame frame )
 //! \param[in] ms_since_last_tick the number of milliseconds since the last call to this method
 void NetworkInterface::tick( const size_t ms_since_last_tick )
 {
+  current_time_stamp_ += ms_since_last_tick;
+  for ( auto it = arp_table_.begin(); it != arp_table_.end(); ) {
+    if ( current_time_stamp_ - it->second.last_timestamp_ > 30000 ) {
+      it = arp_table_.erase( it );
+    } else {
+      ++it;
+    }
+  }
+}
+
 void NetworkInterface::send_frame( Serializer& payload_srlz,
                                    const uint16_t payload_type,
                                    const EthernetAddress& next_hop ) const
