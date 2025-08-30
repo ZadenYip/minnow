@@ -29,13 +29,44 @@ void Router::add_route( const uint32_t route_prefix,
   cerr << "DEBUG: adding route " << Address::from_ipv4_numeric( route_prefix ).ip() << "/"
        << static_cast<int>( prefix_length ) << " => " << ( next_hop.has_value() ? next_hop->ip() : "(direct)" )
        << " on interface " << interface_num << "\n";
+  routing_table_.add_route_entry( route_prefix, prefix_length, interface_num, next_hop);
+}
 
-  debug( "unimplemented add_route() called" );
+void Router::handle_incoming_datagram( InternetDatagram& dgram )
+{
+  // Look up the route for the incoming datagram's destination address
+  auto [interface_num, next_hop] = routing_table_.lookup( dgram.header.dst );
+  assert(interface_num.has_value());
+  // If a route was found, forward the datagram to the appropriate interface
+  if ( dgram.header.ttl <= 1 ) {
+    // If the TTL is 1 or less, the datagram should be discarded (not forwarded)
+    cerr << "DEBUG: discarding datagram to " << dgram.header.dst << " due to TTL expiration\n";
+    return;
+  } else {
+    dgram.header.ttl -= 1;
+    dgram.header.compute_checksum();
+    interfaces_[interface_num.value()]->send_datagram(
+      dgram, next_hop.has_value() ? next_hop.value() : Address::from_ipv4_numeric( dgram.header.dst ) );
+  }
+}
+
+void Router::handle_interface_rcv_dgram( NetworkInterface& interface )
+{
+  std::queue<InternetDatagram>& rcv_dgrams = interface.datagrams_received();
+  while (!rcv_dgrams.empty()) {
+    InternetDatagram& dgram = rcv_dgrams.front();
+    handle_incoming_datagram(dgram);
+    rcv_dgrams.pop();
+  }
 }
 
 // Go through all the interfaces, and route every incoming datagram to its proper outgoing interface.
 void Router::route()
 {
+  for (const auto& interface : interfaces_) {
+    handle_interface_rcv_dgram(*interface);
+  }
+}
 
 void Router::Trie::add_route_entry( const uint32_t& route_prefix,
                             const uint8_t& prefix_length,
@@ -69,7 +100,7 @@ std::pair<std::optional<size_t>, std::optional<Address>> Router::Trie::lookup( c
 
     if ( current != nullptr && current->interface_num_.has_value() ) {
       best_match_node = current;
-}
+    }
   }
 
   return { best_match_node->interface_num_, best_match_node->next_hop_ };
