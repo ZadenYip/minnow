@@ -31,7 +31,36 @@ public:
   // Route packets between the interfaces
   void route();
 
+  class Trie
+  {
+    struct TrieNode
+    {
+      std::optional<size_t> interface_num_ = std::nullopt;
+      std::optional<Address> next_hop_ = std::nullopt;
+      std::unique_ptr<TrieNode> children_[2] = { nullptr, nullptr };
+    };
+
+  public:
+    Trie() : root( std::make_unique<TrieNode>() ) {}
+    void add_route_entry( const uint32_t& route_prefix,
+                          const uint8_t& prefix_length,
+                          const size_t& interface_num,
+                          const std::optional<Address>& next_hop );
+
+    std::pair<std::optional<size_t>, std::optional<Address>> lookup( const uint32_t& target );
+
+  private:
+    std::unique_ptr<TrieNode> root;
+    bool get_bit( const uint32_t& route_prefix, const uint8_t& bit_index ) const
+    {
+      return ( route_prefix >> ( 31 - bit_index ) ) & 0x01;
+    }
+  };
+
 private:
   // The router's collection of network interfaces
   std::vector<std::shared_ptr<NetworkInterface>> interfaces_ {};
+  Trie routing_table_ {};
+  void handle_incoming_datagram( InternetDatagram& dgram );
+  void handle_interface_rcv_dgram( NetworkInterface& interface );
 };
